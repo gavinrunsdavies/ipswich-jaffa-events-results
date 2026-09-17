@@ -16,9 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: Live JAFFA
     env:
-      EVENTS_RESULTS_DB_HOST: ${{ secrets.EVENTS_RESULTS_DB_HOST }}
-      EVENTS_RESULTS_DB_NAME: ${{ secrets.EVENTS_RESULTS_DB_NAME }}
-      EVENTS_RESULTS_DB_USER: ${{ secrets.EVENTS_RESULTS_DB_USER }}
+      EVENTS_RESULTS_DB_HOST: ${{ vars.EVENTS_RESULTS_DB_HOST }}
+      EVENTS_RESULTS_DB_NAME: ${{ vars.EVENTS_RESULTS_DB_NAME }}
+      EVENTS_RESULTS_DB_USER: ${{ vars.EVENTS_RESULTS_DB_USER }}
       EVENTS_RESULTS_DB_PASSWORD: ${{ secrets.EVENTS_RESULTS_DB_PASSWORD }}
     steps:
 
@@ -28,21 +28,21 @@ jobs:
     - name: 📝 Write runtime database config (inject secrets)
       shell: bash
       run: |
-      mkdir -p api
-      echo "<?php" > api/config.php
-      echo "// Generated during CI deploy. Do NOT commit secrets to source control." >> api/config.php
-      echo "if (!defined('EVENTS_RESULTS_DB_HOST')) {" >> api/config.php
-      echo "  define('EVENTS_RESULTS_DB_HOST', '${EVENTS_RESULTS_DB_HOST}');" >> api/config.php
-      echo "}" >> api/config.php
-      echo "if (!defined('EVENTS_RESULTS_DB_NAME')) {" >> api/config.php
-      echo "  define('EVENTS_RESULTS_DB_NAME', '${EVENTS_RESULTS_DB_NAME}');" >> api/config.php
-      echo "}" >> api/config.php
-      echo "if (!defined('EVENTS_RESULTS_DB_USER')) {" >> api/config.php
-      echo "  define('EVENTS_RESULTS_DB_USER', '${EVENTS_RESULTS_DB_USER}');" >> api/config.php
-      echo "}" >> api/config.php
-      echo "if (!defined('EVENTS_RESULTS_DB_PASSWORD')) {" >> api/config.php
-      echo "  define('EVENTS_RESULTS_DB_PASSWORD', '${EVENTS_RESULTS_DB_PASSWORD}');" >> api/config.php
-      echo "}" >> api/config.php
+        mkdir -p api
+        echo "<?php" > api/config.php
+        echo "// Generated during CI deploy. Do NOT commit secrets to source control." >> api/config.php
+        echo "if (!defined('EVENTS_RESULTS_DB_HOST')) {" >> api/config.php
+        echo "  define('EVENTS_RESULTS_DB_HOST', '${EVENTS_RESULTS_DB_HOST}');" >> api/config.php
+        echo "}" >> api/config.php
+        echo "if (!defined('EVENTS_RESULTS_DB_NAME')) {" >> api/config.php
+        echo "  define('EVENTS_RESULTS_DB_NAME', '${EVENTS_RESULTS_DB_NAME}');" >> api/config.php
+        echo "}" >> api/config.php
+        echo "if (!defined('EVENTS_RESULTS_DB_USER')) {" >> api/config.php
+        echo "  define('EVENTS_RESULTS_DB_USER', '${EVENTS_RESULTS_DB_USER}');" >> api/config.php
+        echo "}" >> api/config.php
+        echo "if (!defined('EVENTS_RESULTS_DB_PASSWORD')) {" >> api/config.php
+        echo "  define('EVENTS_RESULTS_DB_PASSWORD', '${EVENTS_RESULTS_DB_PASSWORD}');" >> api/config.php
+        echo "}" >> api/config.php
 
     # Deploy files to live site via FTP
     - name: 📂 Sync files to live

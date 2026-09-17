@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: Test JAFFA
     env:
-      EVENTS_RESULTS_DB_HOST: ${{ secrets.EVENTS_RESULTS_DB_HOST }}
-      EVENTS_RESULTS_DB_NAME: ${{ secrets.EVENTS_RESULTS_DB_NAME }}
-      EVENTS_RESULTS_DB_USER: ${{ secrets.EVENTS_RESULTS_DB_USER }}
+      EVENTS_RESULTS_DB_HOST: ${{ vars.EVENTS_RESULTS_DB_HOST }}
+      EVENTS_RESULTS_DB_NAME: ${{ vars.EVENTS_RESULTS_DB_NAME }}
+      EVENTS_RESULTS_DB_USER: ${{ vars.EVENTS_RESULTS_DB_USER }}
       EVENTS_RESULTS_DB_PASSWORD: ${{ secrets.EVENTS_RESULTS_DB_PASSWORD }}
 
     steps:
