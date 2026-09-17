@@ -1,0 +1,34 @@
+name: PHP Lint
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  php-lint:
+    name: PHP syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Validate composer (if present)
+        run: |
+          if [ -f composer.json ]; then composer validate --no-check-publish || true; fi
+
+      - name: Dump autoload (if composer.json present)
+        run: |
+          if [ -f composer.json ]; then composer dump-autoload -o; fi
+
+      - name: PHP - Syntax check all PHP files
+        run: |
+          set -e
+          echo "Running php -l on repository PHP files"
+          find . -type f -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
