@@ -1,4 +1,4 @@
-# ipswich-events-results
+# ipswich-jaffa-events-results
 Wordpress Plugin for displaying JAFFA results with shortcodes and retrieval via an API
 
 ## Usage
@@ -25,3 +25,15 @@ Get list of races for a event meeting. In most circumstances this will just be t
 # /events/<eventId>/meetings/<meetingId>/races/<raceId>/results
 
 The results for the given race. Contents is JSON format (generaetd from csv style data) and dynamic.
+
+## Configuration / Environment
+
+This plugin connects to a separate results database. Set these environment variables (or define as constants in a deployment-specific config) before activating the plugin:
+
+- `EVENTS_RESULTS_DB_HOST` — database host (default: `DB_HOST` or `localhost`)
+- `EVENTS_RESULTS_DB_NAME` — results database name
+- `EVENTS_RESULTS_DB_USER` — results database user
+- `EVENTS_RESULTS_DB_PASSWORD` — results database password
+- `EVENTS_RESULTS_DB_PREFIX` — table prefix used in the results DB (default: `wp_`)
+
+After installing/updating the plugin, activate it (or visit Settings → Permalinks) to flush rewrite rules so pretty URLs work.

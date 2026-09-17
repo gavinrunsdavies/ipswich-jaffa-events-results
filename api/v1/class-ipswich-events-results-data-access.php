@@ -25,30 +25,49 @@ class Ipswich_Events_Results_Data_Access
 
 	public function __construct()
 	{
-		$this->rdb = new \wpdb(EVENTS_RESULTS_DB_USER, EVENTS_RESULTS_DB_PASSWORD, EVENTS_RESULTS_DB_NAME, DB_HOST);
+		// Do not open DB connection at plugin load. Lazy init when needed.
+		$this->rdb = null;
+	}
+
+	private function get_rdb()
+	{
+		if ($this->rdb instanceof \wpdb) {
+			return $this->rdb;
+		}
+
+		$host = defined('EVENTS_RESULTS_DB_HOST') ? EVENTS_RESULTS_DB_HOST : (defined('DB_HOST') ? DB_HOST : 'localhost');
+		$this->rdb = new \wpdb(EVENTS_RESULTS_DB_USER, EVENTS_RESULTS_DB_PASSWORD, EVENTS_RESULTS_DB_NAME, $host);
 		$this->rdb->show_errors();
+
+		return $this->rdb;
 	}
 
 	public function get_race_results($race_id)
 	{
-		$sql = $this->rdb->prepare('SELECT r.id, r.results, r.name, m.name AS meeting_name, m.date, m.venue, r.type FROM `wp_ije_race_results` r INNER JOIN `wp_ije_meetings` m ON m.id = r.meeting_id where r.id=%d', $race_id);
+		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$rdb = $this->get_rdb();
+		$sql = $rdb->prepare('SELECT r.id, r.results, r.name, r.meeting_id, m.event_id, m.name AS meeting_name, m.date, m.venue, r.type FROM `' . esc_sql($prefix) . 'ije_race_results` r INNER JOIN `' . esc_sql($prefix) . 'ije_meetings` m ON m.id = r.meeting_id WHERE r.id=%d', $race_id);
 
 		return $this->get_results($sql, 'get_race_results');
 	}
 
 	public function get_races($meeting_id)
 	{
-		$sql = $this->rdb->prepare('SELECT r.id, r.name, r.type FROM `wp_ije_race_results` r where r.meeting_id=%d', $meeting_id);
+		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$rdb = $this->get_rdb();
+		$sql = $rdb->prepare('SELECT r.id, r.name, r.type FROM `' . esc_sql($prefix) . 'ije_race_results` r WHERE r.meeting_id=%d', $meeting_id);
 
 		return $this->get_results($sql, 'get_races');
 	}
 
 	public function get_meetings($event_id)
 	{
-		$sql = $this->rdb->prepare('SELECT m.id AS meetingId, m.name AS meetingName, m.date AS meetingDate, m.venue AS meetingVenue, r.id as resultId, r.name as resultName, r.type as resultType
-			FROM `wp_ije_meetings` m
-			LEFT JOIN `wp_ije_race_results` r on r.meeting_id = m.id
-			where m.event_id=%d
+		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$rdb = $this->get_rdb();
+		$sql = $rdb->prepare('SELECT m.id AS meetingId, m.name AS meetingName, m.date AS meetingDate, m.venue AS meetingVenue, r.id as resultId, r.name as resultName, r.type as resultType
+			FROM `' . esc_sql($prefix) . 'ije_meetings` m
+			LEFT JOIN `' . esc_sql($prefix) . 'ije_race_results` r on r.meeting_id = m.id
+			WHERE m.event_id=%d
 			ORDER BY m.date ASC, m.name ASC, r.name ASC;', $event_id);
 
 		$results = $this->get_results($sql, 'get_meetings');
@@ -82,19 +101,22 @@ class Ipswich_Events_Results_Data_Access
 
 	public function get_events()
 	{
-		$sql = "SELECT id, name, info FROM `wp_ije_events` ORDER BY name ASC";
+		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$rdb = $this->get_rdb();
+		$sql = "SELECT id, name, info FROM `" . esc_sql($prefix) . "ije_events` ORDER BY name ASC";
 
 		return $this->get_results($sql, 'get_events');
 	}
 
 	private function get_results($sql, $method_name)
 	{
-		$results = $this->rdb->get_results($sql, OBJECT);
+		$rdb = $this->get_rdb();
+		$results = $rdb->get_results($sql, OBJECT);
 
-		if ($this->rdb->num_rows == 0)
+		if ($rdb->num_rows == 0)
 			return null;
 
-		if (!$results) {
+		if ($results === false) {
 			return new \WP_Error(
 				'ipswich_events_results_api_' . $method_name,
 				'Unknown error in reading results from the database',

@@ -18,3 +18,11 @@ if (!defined('EVENTS_RESULTS_DB_USER')) {
 if (!defined('EVENTS_RESULTS_DB_PASSWORD')) {
     define('EVENTS_RESULTS_DB_PASSWORD', getenv('EVENTS_RESULTS_DB_PASSWORD') ?: '***');
 }
+
+if (!defined('EVENTS_RESULTS_DB_HOST')) {
+    define('EVENTS_RESULTS_DB_HOST', getenv('EVENTS_RESULTS_DB_HOST') ?: defined('DB_HOST') ? DB_HOST : 'localhost');
+}
+
+if (!defined('EVENTS_RESULTS_DB_PREFIX')) {
+    define('EVENTS_RESULTS_DB_PREFIX', getenv('EVENTS_RESULTS_DB_PREFIX') ?: 'wp_');
+}

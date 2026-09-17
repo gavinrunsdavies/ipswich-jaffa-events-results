@@ -1,10 +1,14 @@
 <?php
+if (!defined('ABSPATH')) {
+    die('restricted access');
+}
+
 $eventId = isset($_GET['eventId']) ? intval($_GET['eventId']) : 0;
 $eventTitle = isset($_GET['title']) ? $_GET['title'] : 'Event Meetings';
 $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $eventId . '/meetings'));
 ?>
+<?php wp_head(); ?>
 <div id="raceListingGrid" style="width: 100%; min-height: 300px;" class="ag-theme-quartz"></div>
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
 <style>
     .clickable {
         cursor: pointer;
@@ -16,7 +20,7 @@ $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $even
 </style>
 <script>
 const eventId = <?php echo (int) $eventId; ?>;
-const resultsPage = '<?php echo esc_url(plugins_url('html/DisplayRaceResults.php', dirname(__FILE__))); ?>';
+const resultsPage = '<?php echo esc_url(add_query_arg(array('ipswich_event_results' => 1), home_url('/'))); ?>';
 
 class MeetingRacesTooltip {
     init(params) {
@@ -100,3 +104,4 @@ fetch('<?php echo $apiEndpoint; ?>')
     .then((response) => response.json())
     .then((data) => eventMeetingGridApi.setGridOption('rowData', data));
 </script>
+<?php wp_footer(); ?>

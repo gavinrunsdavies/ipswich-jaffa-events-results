@@ -12,13 +12,22 @@ namespace IpswichEventResultsAPI;
 
 $go = new Program();
 
+register_activation_hook(__FILE__, function() {
+	// flush rewrite rules to register plugin routes
+	flush_rewrite_rules();
+});
+
+register_deactivation_hook(__FILE__, function() {
+	flush_rewrite_rules();
+});
+
 class Program
 {
 	function __construct()
 	{
 		add_action('init', array($this, 'registerShortCodes'));
 
-		require_once "api/plugin.php";
+		require_once plugin_dir_path(__FILE__) . 'api/plugin.php';
 	}
 
 	public function registerShortCodes()
@@ -58,7 +67,7 @@ class Program
 			return '<p>No meetings were found for this event.</p>';
 		}
 
-		$resultsPage = esc_url(plugins_url('html/DisplayRaceResults.php', __FILE__));
+		$resultsPage = esc_url(add_query_arg(array('ipswich_event_results' => 1), home_url('/')));
 		$apiBase = esc_url(home_url('/wp-json/ipswich-events-api/v1'));
 
 		ob_start();
@@ -101,5 +110,11 @@ class Program
 
 	public function scripts()
 	{
+		// Enqueue DataTables and any plugin assets via WordPress
+		wp_enqueue_script('jquery');
+		wp_enqueue_style('ipswich-datatables-css', 'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css', array(), '1.13.7');
+		wp_enqueue_script('ipswich-datatables-js', 'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js', array('jquery'), '1.13.7', true);
+		// ag-grid (optional)
+		wp_enqueue_script('ipswich-ag-grid', 'https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js', array(), '32.3.3', true);
 	}
 }

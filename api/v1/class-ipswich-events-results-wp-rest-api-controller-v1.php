@@ -10,7 +10,18 @@ class Ipswich_Events_Results_WP_REST_API_Controller_V1
 
 	public function __construct()
 	{
+		// Do not create DB connection at construction; lazy-init on demand
+		$this->data_access = null;
+	}
+
+	private function get_data_access()
+	{
+		if ($this->data_access instanceof Ipswich_Events_Results_Data_Access) {
+			return $this->data_access;
+		}
+
 		$this->data_access = new Ipswich_Events_Results_Data_Access();
+		return $this->data_access;
 	}
 
 	public function rest_api_init()
@@ -44,23 +55,15 @@ class Ipswich_Events_Results_WP_REST_API_Controller_V1
 					'required'          => true,
 					'validate_callback' => array($this, 'is_valid_id')
 				)
-			)
-		));
-
-		register_rest_route($namespace, '/events/(?P<eventId>[\d]+)/meetings/(?P<meetingId>[\d]+)/races/(?P<raceId>[\d]+)/results/pdf', array(
-			'methods'             => \WP_REST_Server::READABLE,
-			'callback'            => array($this, 'get_race_results_pdf'),
-			'args'                => array(
-				'raceId'           => array(
-					'required'          => true,
-					'validate_callback' => array($this, 'is_valid_id')
-				),
-				'eventId'           => array(
-					'required'          => true,
+				,'meetingId' => array(
+					'required' => true,
 					'validate_callback' => array($this, 'is_valid_id')
 				)
 			)
 		));
+
+
+
 
 		register_rest_route($namespace, '/events/(?P<eventId>[\d]+)/meetings', array(
 			'methods'             => \WP_REST_Server::READABLE,
@@ -96,7 +99,18 @@ class Ipswich_Events_Results_WP_REST_API_Controller_V1
 
 	public function get_race_results(\WP_REST_Request $request)
 	{
-		$response = $this->data_access->get_race_results($request['raceId']);
+		$dataAccess = $this->get_data_access();
+		$response = $dataAccess->get_race_results($request['raceId']);
+
+		// Validate that race belongs to provided meeting and event (if present)
+		if (!empty($response) && isset($response[0]->meeting_id)) {
+			if (isset($request['meetingId']) && (int) $request['meetingId'] !== (int) $response[0]->meeting_id) {
+				return new \WP_Error('ipswich_events_results_api_not_found', 'Race does not belong to the specified meeting.', array('status' => 404));
+			}
+			if (isset($request['eventId']) && isset($response[0]->event_id) && (int) $request['eventId'] !== (int) $response[0]->event_id) {
+				return new \WP_Error('ipswich_events_results_api_not_found', 'Race does not belong to the specified event.', array('status' => 404));
+			}
+		}
 
 		if (empty($response) || !isset($response[0]->results)) {
 			return rest_ensure_response(array());
@@ -107,26 +121,36 @@ class Ipswich_Events_Results_WP_REST_API_Controller_V1
 		}
 
 		$csv = preg_replace('/^\xEF\xBB\xBF/', '', (string) $response[0]->results);
-		$lines = preg_split('/\r\n|\n|\r/', $csv);
-		$rows = array();
-		foreach ($lines as $line) {
-			if (trim((string) $line) === '') {
+
+		// Parse CSV using a memory stream and fgetcsv to handle quoting properly
+		$handle = fopen('php://memory', 'r+');
+		fwrite($handle, (string) $csv);
+		rewind($handle);
+
+		$header = null;
+		$jsonArray = array();
+		while (($row = fgetcsv($handle)) !== false) {
+			// skip empty rows
+			if (count($row) === 1 && trim($row[0]) === '') {
 				continue;
 			}
-			$rows[] = str_getcsv((string) $line);
-		}
 
-		if (count($rows) < 2) {
-			return rest_ensure_response(array());
-		}
+			if ($header === null) {
+				$header = $row;
+				continue;
+			}
 
-		$header = array_shift($rows);
-		$jsonArray = array();
-		foreach ($rows as $row) {
 			if (count($row) !== count($header)) {
 				continue;
 			}
+
 			$jsonArray[] = array_combine($header, $row);
+		}
+
+		fclose($handle);
+
+		if (empty($jsonArray)) {
+			return rest_ensure_response(array());
 		}
 
 		return rest_ensure_response($jsonArray);
@@ -134,7 +158,8 @@ class Ipswich_Events_Results_WP_REST_API_Controller_V1
 
 	public function get_race_results_pdf(\WP_REST_Request $request)
 	{
-		$response = $this->data_access->get_race_results($request['raceId']);
+		$dataAccess = $this->get_data_access();
+		$response = $dataAccess->get_race_results($request['raceId']);
 
 		if (empty($response) || !isset($response[0]->results)) {
 			return new \WP_Error('ipswich_events_results_api_missing_data', 'No result found for this race.', array('status' => 404));
@@ -149,30 +174,38 @@ class Ipswich_Events_Results_WP_REST_API_Controller_V1
 			$pdf = stream_get_contents($pdf);
 		}
 
-		header('Content-Type: application/pdf');
-		header('Content-Disposition: attachment; filename="' . preg_replace('/[^a-zA-Z0-9_.-]/', '-', (string) $response[0]->name) . '-' . preg_replace('/[^a-zA-Z0-9_.-]/', '-', (string) $response[0]->date) . '.pdf"');
-		header('Content-Length: ' . strlen((string) $pdf));
-		echo $pdf;
-		exit;
+		$filename = preg_replace('/[^a-zA-Z0-9_.-]/', '-', (string) $response[0]->name) . '-' . preg_replace('/[^a-zA-Z0-9_.-]/', '-', (string) $response[0]->date) . '.pdf';
+
+		$rest_response = new \WP_REST_Response($pdf, 200);
+		$rest_response->set_headers(array(
+			'Content-Type' => 'application/pdf',
+			'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+			'Content-Length' => (string) strlen((string) $pdf)
+		));
+
+		return $rest_response;
 	}
 
 	public function get_meetings(\WP_REST_Request $request)
 	{
-		$response = $this->data_access->get_meetings($request['eventId']);
+		$dataAccess = $this->get_data_access();
+		$response = $dataAccess->get_meetings($request['eventId']);
 
 		return rest_ensure_response($response);
 	}
 
 	public function get_races(\WP_REST_Request $request)
 	{
-		$response = $this->data_access->get_races($request['meetingId']);
+		$dataAccess = $this->get_data_access();
+		$response = $dataAccess->get_races($request['meetingId']);
 
 		return rest_ensure_response($response);
 	}
 
 	public function get_events(\WP_REST_Request $request)
 	{
-		$response = $this->data_access->get_events();
+		$dataAccess = $this->get_data_access();
+		$response = $dataAccess->get_events();
 
 		return rest_ensure_response($response);
 	}
