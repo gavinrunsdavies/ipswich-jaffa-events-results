@@ -15,31 +15,35 @@ jobs:
     runs-on: ubuntu-latest
     environment: Test JAFFA
     env:
-      EVENTS_RESULTS_DB_NAME: ${{ vars.EVENTS_RESULTS_DB_NAME }}
-      EVENTS_RESULTS_DB_USER: ${{ vars.EVENTS_RESULTS_DB_USER }}
+      EVENTS_RESULTS_DB_HOST: ${{ secrets.EVENTS_RESULTS_DB_HOST }}
+      EVENTS_RESULTS_DB_NAME: ${{ secrets.EVENTS_RESULTS_DB_NAME }}
+      EVENTS_RESULTS_DB_USER: ${{ secrets.EVENTS_RESULTS_DB_USER }}
       EVENTS_RESULTS_DB_PASSWORD: ${{ secrets.EVENTS_RESULTS_DB_PASSWORD }}
 
     steps:
       - name: 🚚 Get latest code
         uses: actions/checkout@v2
 
-      - name: 📝 Write runtime database config
+        - name: 📝 Write runtime database config (inject secrets)
         shell: bash
         run: |
-          cat <<'PHP' > api/config.php
-          <?php
-          if (!defined('EVENTS_RESULTS_DB_NAME')) {
-              define('EVENTS_RESULTS_DB_NAME', getenv('EVENTS_RESULTS_DB_NAME') ?: '***');
-          }
-
-          if (!defined('EVENTS_RESULTS_DB_USER')) {
-              define('EVENTS_RESULTS_DB_USER', getenv('EVENTS_RESULTS_DB_USER') ?: '***');
-          }
-
-          if (!defined('EVENTS_RESULTS_DB_PASSWORD')) {
-              define('EVENTS_RESULTS_DB_PASSWORD', getenv('EVENTS_RESULTS_DB_PASSWORD') ?: '***');
-          }
-          PHP
+          # Create a deployment-only config fragment with concrete values
+          cat > api/config.php <<PHP
+    <?php
+    // Generated during CI deploy. Do NOT commit secrets to source control.
+    if (!defined('EVENTS_RESULTS_DB_HOST')) {
+      define('EVENTS_RESULTS_DB_HOST', '${EVENTS_RESULTS_DB_HOST}');
+    }
+    if (!defined('EVENTS_RESULTS_DB_NAME')) {
+      define('EVENTS_RESULTS_DB_NAME', '${EVENTS_RESULTS_DB_NAME}');
+    }
+    if (!defined('EVENTS_RESULTS_DB_USER')) {
+      define('EVENTS_RESULTS_DB_USER', '${EVENTS_RESULTS_DB_USER}');
+    }
+    if (!defined('EVENTS_RESULTS_DB_PASSWORD')) {
+      define('EVENTS_RESULTS_DB_PASSWORD', '${EVENTS_RESULTS_DB_PASSWORD}');
+    }
+    PHP
 
       # Deploy files to test site via FTP
       - name: 📂 Sync files to test
