@@ -20,7 +20,8 @@ $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $even
 </style>
 <script>
 const eventId = <?php echo (int) $eventId; ?>;
-const resultsPage = '<?php echo esc_url(add_query_arg(array('ipswich_event_results' => 1), home_url('/'))); ?>';
+// prebuild results page URL with event and title; meetingId and raceId are appended per-row
+const resultsPage = '<?php echo esc_url(add_query_arg(array('ipswich_event_results' => 1, 'title' => $eventTitle, 'eventId' => $eventId), home_url('/'))); ?>';
 
 class MeetingRacesTooltip {
     init(params) {
@@ -55,10 +56,12 @@ class MeetingRacesTooltip {
 
             const link = document.createElement('a');
             if (result.type == 'pdf') {
-                link.href = '<?php echo esc_url(home_url()); ?>/wp-json/ipswich-events-api/v1/events/' + eventId + '/meetings/' + params.data.meetingId + '/races/' + result.id + '/results/pdf';
+                // Use the pretty URL rewrite that serves the PDF template (not the REST JSON route)
+                link.href = '<?php echo esc_url(home_url()); ?>' + '/events/' + eventId + '/meetings/' + params.data.meetingId + '/races/' + result.id + '/results/pdf';
                 link.textContent = 'PDF';
             } else {
-                link.href = resultsPage + '?title=' + encodeURIComponent('<?php echo esc_js($eventTitle); ?>') + '&eventId=' + eventId + '&meetingId=' + params.data.meetingId + '&raceId=' + result.id;
+                // resultsPage already contains ?ipswich_event_results=1 plus title and eventId
+                link.href = resultsPage + '&meetingId=' + params.data.meetingId + '&raceId=' + result.id;
                 link.textContent = 'CSV';
             }
             linkCell.appendChild(link);

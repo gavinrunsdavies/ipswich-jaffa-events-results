@@ -41,7 +41,8 @@ class Program
 		wp_register_script('ipswich-ag-grid', 'https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js', array(), '32.3.3', true);
 	}
 
-		add_action('wp_print_scripts', array($this, 'scripts'));
+		// Do not enqueue scripts globally; assets are enqueued per-template or when rendering the shortcode.
+		// add_action('wp_print_scripts', array($this, 'scripts'));
 	}
 
 	public function processShortCode($attr, $content = "")
@@ -73,13 +74,14 @@ class Program
 			return '<p>No meetings were found for this event.</p>';
 		}
 
-		$resultsPage = esc_url(add_query_arg(array('ipswich_event_results' => 1), home_url('/')));
+		$resultsPage = esc_url(add_query_arg(array('ipswich_event_results' => 1, 'title' => rawurlencode('Event Meetings'), 'eventId' => $eventId), home_url('/')));
         
 		// Enqueue assets only for pages that render the shortcode
+		// DataTables is intentionally not enqueued globally to avoid styling collisions; templates will enqueue it when needed.
 		wp_enqueue_style('ipswich-datatables-css');
 		wp_enqueue_script('ipswich-datatables-js');
 		wp_enqueue_script('ipswich-ag-grid');
-		$apiBase = esc_url(home_url('/wp-json/ipswich-events-api/v1'));
+		$apiBase = esc_url(home_url('/'));
 
 		ob_start();
 		?>
@@ -102,9 +104,12 @@ class Program
 							<td>
 								<?php foreach ($meeting['results'] as $result): ?>
 									<?php
-									$href = ($result['type'] === 'pdf')
-										? $apiBase . '/events/' . (int) $eventId . '/meetings/' . (int) $meeting['meetingId'] . '/races/' . (int) $result['id'] . '/results/pdf'
-										: $resultsPage . '?eventId=' . (int) $eventId . '&meetingId=' . (int) $meeting['meetingId'] . '&raceId=' . (int) $result['id'];
+									if ($result['type'] === 'pdf') {
+										$href = $apiBase . '/events/' . (int) $eventId . '/meetings/' . (int) $meeting['meetingId'] . '/races/' . (int) $result['id'] . '/results/pdf';
+									} else {
+										// resultsPage already contains ipswich_event_results and eventId
+										$href = $resultsPage . '&meetingId=' . (int) $meeting['meetingId'] . '&raceId=' . (int) $result['id'];
+									}
 									$label = strtoupper($result['type']);
 									?>
 									<a href="<?php echo esc_url($href); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($label); ?>: <?php echo esc_html($result['name']); ?></a><br />
