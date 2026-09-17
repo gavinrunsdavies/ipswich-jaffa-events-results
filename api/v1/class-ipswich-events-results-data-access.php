@@ -44,31 +44,46 @@ class Ipswich_Events_Results_Data_Access
 
 	public function get_race_results($race_id)
 	{
-		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$raw_prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		// validate prefix: allow only letters, numbers and underscore
+		$prefix = preg_match('/^[A-Za-z0-9_]+$/', $raw_prefix) ? $raw_prefix : 'wp_';
 		$rdb = $this->get_rdb();
-		$sql = $rdb->prepare('SELECT r.id, r.results, r.name, r.meeting_id, m.event_id, m.name AS meeting_name, m.date, m.venue, r.type FROM `' . esc_sql($prefix) . 'ije_race_results` r INNER JOIN `' . esc_sql($prefix) . 'ije_meetings` m ON m.id = r.meeting_id WHERE r.id=%d', $race_id);
+		$race_table = $prefix . 'ije_race_results';
+		$meetings_table = $prefix . 'ije_meetings';
+		$sql = $rdb->prepare(
+			"SELECT r.id, r.results, r.name, r.meeting_id, m.event_id, m.name AS meeting_name, m.date, m.venue, r.type FROM `{$race_table}` r INNER JOIN `{$meetings_table}` m ON m.id = r.meeting_id WHERE r.id=%d",
+			$race_id
+		);
 
 		return $this->get_results($sql, 'get_race_results');
 	}
 
 	public function get_races($meeting_id)
 	{
-		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$raw_prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$prefix = preg_match('/^[A-Za-z0-9_]+$/', $raw_prefix) ? $raw_prefix : 'wp_';
 		$rdb = $this->get_rdb();
-		$sql = $rdb->prepare('SELECT r.id, r.name, r.type FROM `' . esc_sql($prefix) . 'ije_race_results` r WHERE r.meeting_id=%d', $meeting_id);
+		$race_table = $prefix . 'ije_race_results';
+		$sql = $rdb->prepare("SELECT r.id, r.name, r.type FROM `{$race_table}` r WHERE r.meeting_id=%d", $meeting_id);
 
 		return $this->get_results($sql, 'get_races');
 	}
 
 	public function get_meetings($event_id)
 	{
-		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$raw_prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$prefix = preg_match('/^[A-Za-z0-9_]+$/', $raw_prefix) ? $raw_prefix : 'wp_';
 		$rdb = $this->get_rdb();
-		$sql = $rdb->prepare('SELECT m.id AS meetingId, m.name AS meetingName, m.date AS meetingDate, m.venue AS meetingVenue, r.id as resultId, r.name as resultName, r.type as resultType
-			FROM `' . esc_sql($prefix) . 'ije_meetings` m
-			LEFT JOIN `' . esc_sql($prefix) . 'ije_race_results` r on r.meeting_id = m.id
-			WHERE m.event_id=%d
-			ORDER BY m.date ASC, m.name ASC, r.name ASC;', $event_id);
+		$meetings_table = $prefix . 'ije_meetings';
+		$race_table = $prefix . 'ije_race_results';
+		$sql = $rdb->prepare(
+			"SELECT m.id AS meetingId, m.name AS meetingName, m.date AS meetingDate, m.venue AS meetingVenue, r.id as resultId, r.name as resultName, r.type as resultType
+				FROM `{$meetings_table}` m
+				LEFT JOIN `{$race_table}` r on r.meeting_id = m.id
+				WHERE m.event_id=%d
+				ORDER BY m.date ASC, m.name ASC, r.name ASC;",
+			$event_id
+		);
 
 		$results = $this->get_results($sql, 'get_meetings');
 
@@ -101,9 +116,11 @@ class Ipswich_Events_Results_Data_Access
 
 	public function get_events()
 	{
-		$prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$raw_prefix = defined('EVENTS_RESULTS_DB_PREFIX') ? EVENTS_RESULTS_DB_PREFIX : 'wp_';
+		$prefix = preg_match('/^[A-Za-z0-9_]+$/', $raw_prefix) ? $raw_prefix : 'wp_';
 		$rdb = $this->get_rdb();
-		$sql = "SELECT id, name, info FROM `" . esc_sql($prefix) . "ije_events` ORDER BY name ASC";
+		$events_table = $prefix . 'ije_events';
+		$sql = "SELECT id, name, info FROM `{$events_table}` ORDER BY name ASC";
 
 		return $this->get_results($sql, 'get_events');
 	}

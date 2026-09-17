@@ -51,6 +51,13 @@ add_action('template_redirect', function() {
 		if ($meeting) { $_GET['meetingId'] = $meeting; }
 		if ($race) { $_GET['raceId'] = $race; }
 
+		// Enqueue assets if registered by plugin bootstrap
+		if (function_exists('wp_enqueue_style')) {
+			wp_enqueue_style('ipswich-datatables-css');
+			wp_enqueue_script('ipswich-datatables-js');
+			wp_enqueue_script('ipswich-ag-grid');
+		}
+
 		include plugin_dir_path(__FILE__) . '../html/DisplayRacePdf.php';
 		exit;
 	}
@@ -63,11 +70,17 @@ add_action('template_redirect', function() {
 		if ($meeting) { $_GET['meetingId'] = $meeting; }
 		if ($race) { $_GET['raceId'] = $race; }
 
+		// Enqueue assets for results page (if registered)
+		if (function_exists('wp_enqueue_style')) {
+			wp_enqueue_style('ipswich-datatables-css');
+			wp_enqueue_script('ipswich-datatables-js');
+			wp_enqueue_script('ipswich-ag-grid');
+		}
+
 		// Ensure WP context is present and include the template which will use WP enqueued assets
 		include plugin_dir_path(__FILE__) . '../html/DisplayRaceResults.php';
 		exit;
 	}
 });
 
-?>
 ?>

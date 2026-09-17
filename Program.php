@@ -26,6 +26,7 @@ class Program
 	function __construct()
 	{
 		add_action('init', array($this, 'registerShortCodes'));
+		add_action('init', array($this, 'registerAssets'));
 
 		require_once plugin_dir_path(__FILE__) . 'api/plugin.php';
 	}
@@ -34,6 +35,11 @@ class Program
 	{
 		add_shortcode('ipswich-jaffa-events-results', array($this, 'processShortCode'));
 		add_shortcode('ipswich-jaffa-events-meetings', array($this, 'processShortCode'));
+	{
+		wp_register_style('ipswich-datatables-css', 'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css', array(), '1.13.7');
+		wp_register_script('ipswich-datatables-js', 'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js', array('jquery'), '1.13.7', true);
+		wp_register_script('ipswich-ag-grid', 'https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js', array(), '32.3.3', true);
+	}
 
 		add_action('wp_print_scripts', array($this, 'scripts'));
 	}
@@ -68,6 +74,11 @@ class Program
 		}
 
 		$resultsPage = esc_url(add_query_arg(array('ipswich_event_results' => 1), home_url('/')));
+        
+		// Enqueue assets only for pages that render the shortcode
+		wp_enqueue_style('ipswich-datatables-css');
+		wp_enqueue_script('ipswich-datatables-js');
+		wp_enqueue_script('ipswich-ag-grid');
 		$apiBase = esc_url(home_url('/wp-json/ipswich-events-api/v1'));
 
 		ob_start();
