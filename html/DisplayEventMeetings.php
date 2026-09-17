@@ -6,105 +6,98 @@ if (!defined('ABSPATH')) {
 $eventId = isset($_GET['eventId']) ? intval($_GET['eventId']) : 0;
 $eventTitle = isset($_GET['title']) ? $_GET['title'] : 'Event Meetings';
 $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $eventId . '/meetings'));
+
+// home_url() can come back with a trailing slash depending on how the site
+// URL is configured. Normalise it so appending '/events/...' below can't
+// ever produce the "..uk//events/.." double-slash you saw in production.
+$baseUrl = untrailingslashit(home_url());
 ?>
 <?php wp_head(); ?>
-<div id="raceListingGrid" style="width: 100%; min-height: 300px;" class="ag-theme-quartz"></div>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 <style>
-    .clickable {
-        cursor: pointer;
-        background-color: #f0f8ff;
+    #meetingsTable td,
+    #meetingsTable th {
+        vertical-align: top;
     }
-    .clickable:hover {
-        background-color: #add8e6;
+    .race-result-links a {
+        display: inline-block;
+        margin: 0 10px 6px 0;
+        white-space: nowrap;
     }
 </style>
+
+<table id="meetingsTable" class="display" style="width:100%">
+    <thead>
+        <tr>
+            <th>Meeting</th>
+            <th>Date</th>
+            <th>Venue</th>
+            <th>Results</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script>
-const eventId = <?php echo (int) $eventId; ?>;
-// prebuild results page URL with event and title; meetingId and raceId are appended per-row
-const resultsPage = '<?php echo esc_url(add_query_arg(array('ipswich_event_results' => 1, 'title' => $eventTitle, 'eventId' => $eventId), home_url('/'))); ?>';
+(function ($) {
+    const eventId = <?php echo (int) $eventId; ?>;
+    const baseUrl = '<?php echo esc_js($baseUrl); ?>';
 
-class MeetingRacesTooltip {
-    init(params) {
-        const tooltipData = params.data.results || [];
-        const table = document.createElement('table');
-        table.style.borderCollapse = 'collapse';
-        table.style.width = '100%';
-        table.style.backgroundColor = '#fff';
-        table.style.border = '1px solid #000';
+    // Prebuilt results page URL with event + title; meetingId and raceId
+    // are appended per race below (same pattern as the original file).
+    const resultsPage = '<?php echo esc_url(add_query_arg(array('ipswich_event_results' => 1, 'title' => $eventTitle, 'eventId' => $eventId), home_url('/'))); ?>';
 
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.innerHTML = `
-            <th style="border: 1px solid #ccc; padding: 8px; text-align: left; background-color: #f4f4f4;">Race</th>
-            <th style="border: 1px solid #ccc; padding: 8px; text-align: left; background-color: #f4f4f4;">Results</th>
-        `;
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+    function buildResultLink(meetingId, result) {
+        const link = document.createElement('a');
 
-        const tbody = document.createElement('tbody');
-        tooltipData.forEach((result) => {
-            const row = document.createElement('tr');
-            const raceCell = document.createElement('td');
-            raceCell.textContent = result.name;
-            raceCell.style.border = '1px solid #ccc';
-            raceCell.style.padding = '8px';
-            row.appendChild(raceCell);
+        if (result.type === 'pdf') {
+            // baseUrl has no trailing slash, so this can never double up.
+            link.href = baseUrl + '/events/' + eventId + '/meetings/' + meetingId + '/races/' + result.id + '/results/pdf';
+            link.textContent = 'PDF: ' + result.name;
+        } else {
+            link.href = resultsPage + '&meetingId=' + meetingId + '&raceId=' + result.id;
+            link.textContent = 'CSV: ' + result.name;
+        }
 
-            const linkCell = document.createElement('td');
-            linkCell.style.border = '1px solid #ccc';
-            linkCell.style.padding = '8px';
+        return link.outerHTML;
+    }
 
-            const link = document.createElement('a');
-            if (result.type == 'pdf') {
-                // Use the pretty URL rewrite that serves the PDF template (not the REST JSON route)
-                link.href = '<?php echo esc_url(home_url()); ?>' + '/events/' + eventId + '/meetings/' + params.data.meetingId + '/races/' + result.id + '/results/pdf';
-                link.textContent = 'PDF';
-            } else {
-                // resultsPage already contains ?ipswich_event_results=1 plus title and eventId
-                link.href = resultsPage + '&meetingId=' + params.data.meetingId + '&raceId=' + result.id;
-                link.textContent = 'CSV';
-            }
-            linkCell.appendChild(link);
-            row.appendChild(linkCell);
-            tbody.appendChild(row);
+    function buildResultsCell(meetingId, results) {
+        if (!results || !results.length) {
+            return '';
+        }
+        return '<div class="race-result-links">' +
+            results.map((r) => buildResultLink(meetingId, r)).join('') +
+            '</div>';
+    }
+
+    $(function () {
+        const table = $('#meetingsTable').DataTable({
+            columns: [
+                { data: 'meetingName' },
+                { data: 'meetingDate' },
+                { data: 'meetingVenue', defaultContent: '' },
+                {
+                    data: 'results',
+                    orderable: false,
+                    render: function (results, type, row) {
+                        return type === 'display' ? buildResultsCell(row.meetingId, results) : '';
+                    }
+                }
+            ],
+            order: [[1, 'desc']],
+            pageLength: 25
         });
-        table.appendChild(tbody);
 
-        this.tooltipContainer = document.createElement('div');
-        this.tooltipContainer.style.position = 'absolute';
-        this.tooltipContainer.style.backgroundColor = '#fff';
-        this.tooltipContainer.style.border = '1px solid #ccc';
-        this.tooltipContainer.style.padding = '10px';
-        this.tooltipContainer.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-        this.tooltipContainer.style.pointerEvents = 'auto';
-        this.tooltipContainer.style.zIndex = '1000';
-        this.tooltipContainer.appendChild(table);
-
-        this.eGui = { getGui: () => this.tooltipContainer };
-    }
-
-    getGui() {
-        return this.tooltipContainer;
-    }
-}
-
-const eventMeetingGridOptions = {
-    rowData: [],
-    defaultColDef: { flex: 1 },
-    tooltipShowDelay: 200,
-    tooltipInteraction: true,
-    columnDefs: [
-        { field: 'meetingId', hide: true },
-        { headerName: 'Meeting', field: 'meetingName', tooltipField: 'meetingName', tooltipComponent: MeetingRacesTooltip },
-        { headerName: 'Date', field: 'meetingDate' },
-        { headerName: 'Venue', field: 'meetingVenue' }
-    ]
-};
-
-const eventMeetingGridApi = agGrid.createGrid(document.querySelector('#raceListingGrid'), eventMeetingGridOptions);
-
-fetch('<?php echo $apiEndpoint; ?>')
-    .then((response) => response.json())
-    .then((data) => eventMeetingGridApi.setGridOption('rowData', data));
+        fetch('<?php echo $apiEndpoint; ?>')
+            .then((response) => response.json())
+            .then((data) => {
+                table.rows.add(data).draw();
+            })
+            .catch((err) => console.error('Failed to load meetings:', err));
+    });
+})(jQuery);
 </script>
 <?php wp_footer(); ?>
