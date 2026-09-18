@@ -12,17 +12,19 @@ namespace IpswichEventResultsAPI;
 
 $go = new Program();
 
-register_activation_hook(__FILE__, function() {
+register_activation_hook(__FILE__, function () {
 	// flush rewrite rules to register plugin routes
 	flush_rewrite_rules();
 });
 
-register_deactivation_hook(__FILE__, function() {
+register_deactivation_hook(__FILE__, function () {
 	flush_rewrite_rules();
 });
 
 class Program
 {
+	private static $instanceCount = 0;
+
 	function __construct()
 	{
 		add_action('init', array($this, 'registerShortCodes'));
@@ -35,14 +37,15 @@ class Program
 	{
 		add_shortcode('ipswich-jaffa-events-results', array($this, 'processShortCode'));
 		add_shortcode('ipswich-jaffa-events-meetings', array($this, 'processShortCode'));
+	}
+
+	public function registerAssets()
 	{
 		wp_register_style('ipswich-datatables-css', 'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css', array(), '1.13.7');
 		wp_register_script('ipswich-datatables-js', 'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js', array('jquery'), '1.13.7', true);
-		wp_register_script('ipswich-ag-grid', 'https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js', array(), '32.3.3', true);
-	}
 
-		// Do not enqueue scripts globally; assets are enqueued per-template or when rendering the shortcode.
-		// add_action('wp_print_scripts', array($this, 'scripts'));
+		// Registered only, not enqueued — enqueued in render_event_meetings()
+		// so pages without the shortcode don't load DataTables for nothing.
 	}
 
 	public function processShortCode($attr, $content = "")
@@ -75,62 +78,21 @@ class Program
 		}
 
 		$resultsPage = esc_url(add_query_arg(array('ipswich_event_results' => 1, 'title' => rawurlencode('Event Meetings'), 'eventId' => $eventId), home_url('/')));
-        
-		// Enqueue assets only for pages that render the shortcode
-		// DataTables is intentionally not enqueued globally to avoid styling collisions; templates will enqueue it when needed.
+
+		// Normalised so appending '/events/...' in the template can never
+		// double up a slash, regardless of how home_url() is configured.
+		$apiBase = untrailingslashit(home_url());
+
+		// Multiple copies of this shortcode can appear on one page, so
+		// each table needs a unique id for DataTables to target it alone.
+		self::$instanceCount++;
+		$tableId = 'ipswich-meetings-table-' . $eventId . '-' . self::$instanceCount;
+
 		wp_enqueue_style('ipswich-datatables-css');
 		wp_enqueue_script('ipswich-datatables-js');
-		wp_enqueue_script('ipswich-ag-grid');
-		$apiBase = esc_url(home_url('/'));
 
 		ob_start();
-		?>
-		<div class="ipswich-event-results">
-			<table class="widefat striped">
-				<thead>
-					<tr>
-						<th>Meeting</th>
-						<th>Date</th>
-						<th>Venue</th>
-						<th>Results</th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ($meetings as $meeting): ?>
-						<tr>
-							<td><?php echo esc_html($meeting['meetingName']); ?></td>
-							<td><?php echo esc_html($meeting['meetingDate']); ?></td>
-							<td><?php echo esc_html($meeting['meetingVenue']); ?></td>
-							<td>
-								<?php foreach ($meeting['results'] as $result): ?>
-									<?php
-									if ($result['type'] === 'pdf') {
-										$href = $apiBase . '/events/' . (int) $eventId . '/meetings/' . (int) $meeting['meetingId'] . '/races/' . (int) $result['id'] . '/results/pdf';
-									} else {
-										// resultsPage already contains ipswich_event_results and eventId
-										$href = $resultsPage . '&meetingId=' . (int) $meeting['meetingId'] . '&raceId=' . (int) $result['id'];
-									}
-									$label = strtoupper($result['type']);
-									?>
-									<a href="<?php echo esc_url($href); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($label); ?>: <?php echo esc_html($result['name']); ?></a><br />
-								<?php endforeach; ?>
-							</td>
-						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
-		<?php
+		include plugin_dir_path(__FILE__) . 'templates/meetings-table.php';
 		return ob_get_clean();
-	}
-
-	public function scripts()
-	{
-		// Enqueue DataTables and any plugin assets via WordPress
-		wp_enqueue_script('jquery');
-		wp_enqueue_style('ipswich-datatables-css', 'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css', array(), '1.13.7');
-		wp_enqueue_script('ipswich-datatables-js', 'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js', array('jquery'), '1.13.7', true);
-		// ag-grid (optional)
-		wp_enqueue_script('ipswich-ag-grid', 'https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js', array(), '32.3.3', true);
 	}
 }

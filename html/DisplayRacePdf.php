@@ -1,5 +1,7 @@
 <?php
-if (!defined('ABSPATH')) { die('restricted access'); }
+if (!defined('ABSPATH')) {
+    die('restricted access');
+}
 
 $eventId = isset($_GET['eventId']) ? intval($_GET['eventId']) : 0;
 $meetingId = isset($_GET['meetingId']) ? intval($_GET['meetingId']) : 0;
@@ -41,6 +43,12 @@ if (is_resource($pdf)) {
 }
 
 $filename = preg_replace('/[^a-zA-Z0-9_.-]/', '-', (string)$response[0]->name) . '-' . preg_replace('/[^a-zA-Z0-9_.-]/', '-', (string)$response[0]->date) . '.pdf';
+
+// Discard any buffered output (whitespace, stray warnings, etc.) that would
+// otherwise get prepended to the binary PDF and corrupt it.
+while (ob_get_level()) {
+    ob_end_clean();
+}
 
 header('Content-Type: application/pdf');
 header('Content-Disposition: inline; filename="' . $filename . '"');
