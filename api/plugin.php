@@ -83,6 +83,8 @@ add_action('template_redirect', function () {
         if (function_exists('wp_enqueue_style')) {
             wp_enqueue_style('ipswich-datatables-css');
             wp_enqueue_script('ipswich-datatables-js');
+            wp_enqueue_style('ipswich-datatables-responsive-css');
+            wp_enqueue_script('ipswich-datatables-responsive-js');
         }
 
         // Ensure WP context is present and include the template which will use WP enqueued assets

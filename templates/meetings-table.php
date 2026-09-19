@@ -30,16 +30,20 @@ if (!defined('ABSPATH')) {
                     <td><?php echo esc_html($meeting['meetingVenue']); ?></td>
                     <td>
                         <?php foreach ($meeting['results'] as $result): ?>
-                            <?php
-                            if ($result['type'] === 'pdf') {
-                                $href = $apiBase . '/events/' . (int) $eventId . '/meetings/' . (int) $meeting['meetingId'] . '/races/' . (int) $result['id'] . '/results/pdf';
-                            } else {
-                                // resultsPage already contains ipswich_event_results and eventId
-                                $href = $resultsPage . '&meetingId=' . (int) $meeting['meetingId'] . '&raceId=' . (int) $result['id'];
-                            }
-                            $label = strtoupper($result['type']);
-                            ?>
-                            <a href="<?php echo esc_url($href); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($label); ?>: <?php echo esc_html($result['name']); ?></a><br />
+                            <?php if (empty($result['hasResults'])): ?>
+                                <span class="ipswich-no-results" style="color:#767676;"><?php echo esc_html($result['name']); ?> — No results available</span><br />
+                            <?php else: ?>
+                                <?php
+                                if ($result['type'] === 'pdf') {
+                                    $href = $apiBase . '/events/' . (int) $eventId . '/meetings/' . (int) $meeting['meetingId'] . '/races/' . (int) $result['id'] . '/results/pdf';
+                                } else {
+                                    // resultsPage already contains ipswich_event_results and eventId
+                                    $href = $resultsPage . '&meetingId=' . (int) $meeting['meetingId'] . '&raceId=' . (int) $result['id'];
+                                }
+                                $label = strtoupper($result['type']);
+                                ?>
+                                <a href="<?php echo esc_url($href); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($label); ?>: <?php echo esc_html($result['name']); ?></a><br />
+                            <?php endif; ?>
                         <?php endforeach; ?>
                     </td>
                 </tr>

@@ -57,7 +57,7 @@ class Ipswich_Events_Results_Data_Access
 
 	public function get_races($meeting_id)
 	{
-		$rdb = $this->get_rdb();	
+		$rdb = $this->get_rdb();
 		$sql = $rdb->prepare("SELECT r.id, r.name, r.type FROM `wp_ije_race_results` r WHERE r.meeting_id=%d", $meeting_id);
 
 		return $this->get_results($sql, 'get_races');
@@ -66,13 +66,16 @@ class Ipswich_Events_Results_Data_Access
 	public function get_meetings($event_id)
 	{
 		$rdb = $this->get_rdb();
-		
+
+		// LENGTH(r.results) lets us tell a race with no result content apart
+		// from one that genuinely has results, without pulling the (potentially
+		// large) blob itself just to check it's non-empty.
 		$sql = $rdb->prepare(
-			"SELECT m.id AS meetingId, m.name AS meetingName, m.date AS meetingDate, m.venue AS meetingVenue, r.id as resultId, r.name as resultName, r.type as resultType
-				FROM `wp_ije_meetings` m
-				LEFT JOIN `wp_ije_race_results` r on r.meeting_id = m.id
-				WHERE m.event_id=%d
-				ORDER BY m.date ASC, m.name ASC, r.name ASC;",
+			"SELECT m.id AS meetingId, m.name AS meetingName, m.date AS meetingDate, m.venue AS meetingVenue, r.id as resultId, r.name as resultName, r.type as resultType, LENGTH(r.results) as resultLength
+                                FROM `wp_ije_meetings` m
+                                LEFT JOIN `wp_ije_race_results` r on r.meeting_id = m.id
+                                WHERE m.event_id=%d
+                                ORDER BY m.date ASC, m.name ASC, r.name ASC;",
 			$event_id
 		);
 
@@ -93,11 +96,15 @@ class Ipswich_Events_Results_Data_Access
 				];
 			}
 
+			// Include every race that exists for this meeting, even ones
+			// with no result content — 'hasResults' tells the template
+			// whether to render a link or a plain "no results" label.
 			if (!empty($row->resultId)) {
 				$meetings[$row->meetingId]['results'][] = [
 					'id' => $row->resultId,
 					'name' => $row->resultName,
-					'type' => $row->resultType
+					'type' => $row->resultType,
+					'hasResults' => !empty($row->resultLength)
 				];
 			}
 		}

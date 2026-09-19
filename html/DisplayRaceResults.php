@@ -8,32 +8,47 @@ $meetingId = isset($_GET['meetingId']) ? intval($_GET['meetingId']) : 0;
 $raceId = isset($_GET['raceId']) ? intval($_GET['raceId']) : 0;
 $title = isset($_GET['title']) ? $_GET['title'] : 'Race Results';
 $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $eventId . '/meetings/' . $meetingId . '/races/' . $raceId . '/results'));
+
+// Give the theme's own <title> a sensible value for this page, since
+// get_header() below renders the theme's normal document head.
+add_filter('pre_get_document_title', function () use ($title) {
+    return $title . ' — Ipswich JAFFA Running Club';
+});
+
+get_header();
 ?>
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo esc_html($title); ?></title>
-    <?php wp_head(); ?>
-    <style>
-        /* Minimal layout tweaks */
-        #raceResultsTable {
-            width: 100%;
-        }
-    </style>
-</head>
-
-<body>
+<div class="ipswich-race-results-page" style="max-width:100%; padding:20px; box-sizing:border-box;">
     <h1><?php echo esc_html($title); ?></h1>
 
     <?php if (!$eventId || !$meetingId || !$raceId) : ?>
         <p>Missing event, meeting or race reference — this results page needs all three in the URL.</p>
     <?php else : ?>
-        <div style="overflow: auto;">
-            <table id="raceResultsTable" class="display" style="width: 100%;"></table>
+        <div style="overflow-x: auto;">
+            <table id="raceResultsTable" class="display responsive nowrap" style="width: 100%;"></table>
         </div>
+
+        <style>
+            /* A little breathing room on the collapsed-row "+" control and
+           details panel the Responsive extension injects on small screens. */
+            #raceResultsTable.dtr-inline.collapsed>tbody>tr>td.dtr-control {
+                padding-left: 24px;
+            }
+
+            #raceResultsTable td,
+            #raceResultsTable th {
+                font-size: 14px;
+            }
+
+            @media (max-width: 600px) {
+
+                #raceResultsTable td,
+                #raceResultsTable th {
+                    font-size: 13px;
+                    padding: 6px 8px;
+                }
+            }
+        </style>
 
         <script>
             jQuery(function($) {
@@ -57,13 +72,18 @@ $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $even
                     })
                     .then((data) => {
                         if (!Array.isArray(data) || data.length === 0) {
-                            document.body.insertAdjacentHTML('beforeend', '<p>No results found.</p>');
+                            document.querySelector('.ipswich-race-results-page').insertAdjacentHTML('beforeend', '<p>No results found.</p>');
                             return;
                         }
 
-                        const columns = Object.keys(data[0]).map((field) => ({
+                        const fields = Object.keys(data[0]);
+                        const columns = fields.map((field, index) => ({
                             data: field,
-                            title: toTitle(field)
+                            title: toTitle(field),
+                            // Keep the first couple of columns (typically position/name)
+                            // always visible; let later ones collapse first on narrow
+                            // screens. Responsive falls back sensibly if there are fewer.
+                            responsivePriority: index < 2 ? 1 : index + 1
                         }));
 
                         $('#raceResultsTable').DataTable({
@@ -77,13 +97,11 @@ $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $even
                     })
                     .catch((error) => {
                         console.error('Error fetching race results:', error);
-                        document.body.insertAdjacentHTML('beforeend', '<p>Unable to load results.</p>');
+                        document.querySelector('.ipswich-race-results-page').insertAdjacentHTML('beforeend', '<p>Unable to load results.</p>');
                     });
             });
         </script>
     <?php endif; ?>
+</div>
 
-    <?php wp_footer(); ?>
-</body>
-
-</html>
+<?php get_footer(); ?>

@@ -44,6 +44,13 @@ class Program
 		wp_register_style('ipswich-datatables-css', 'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css', array(), '1.13.7');
 		wp_register_script('ipswich-datatables-js', 'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js', array('jquery'), '1.13.7', true);
 
+		// Responsive extension: makes the results table collapse extra
+		// columns behind an expandable "+" on narrow screens instead of
+		// just overflowing sideways. Only needed on the results page, so
+		// it's registered here but enqueued separately in api/plugin.php.
+		wp_register_style('ipswich-datatables-responsive-css', 'https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css', array('ipswich-datatables-css'), '2.5.0');
+		wp_register_script('ipswich-datatables-responsive-js', 'https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js', array('ipswich-datatables-js'), '2.5.0', true);
+
 		// Registered only, not enqueued — enqueued in render_event_meetings()
 		// so pages without the shortcode don't load DataTables for nothing.
 	}
