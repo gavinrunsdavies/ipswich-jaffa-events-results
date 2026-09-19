@@ -45,10 +45,12 @@ class Ipswich_Events_Results_Data_Access
 	public function get_race_results($race_id)
 	{
 		$rdb = $this->get_rdb();
-		$race_table = 'wp_ije_race_results';
-		$meetings_table = 'wp_ije_meetings';
 		$sql = $rdb->prepare(
-			"SELECT r.id, r.results, r.name, r.meeting_id, m.event_id, m.name AS meeting_name, m.date, m.venue, r.type FROM `{$race_table}` r INNER JOIN `{$meetings_table}` m ON m.id = r.meeting_id WHERE r.id=%d",
+			"SELECT r.id, r.results, r.name, r.meeting_id, m.event_id, m.name AS meeting_name, m.date, m.venue, r.type, e.name AS event_name, e.info AS event_info
+                                FROM `wp_ije_race_results` r
+                                INNER JOIN `wp_ije_meetings` m ON m.id = r.meeting_id
+                                LEFT JOIN `wp_ije_events` e ON e.id = m.event_id
+                                WHERE r.id=%d",
 			$race_id
 		);
 
@@ -85,6 +87,8 @@ class Ipswich_Events_Results_Data_Access
 			return null;
 
 		$meetings = [];
+		$csvRaceIds = [];
+
 		foreach ($results as $row) {
 			if (!isset($meetings[$row->meetingId])) {
 				$meetings[$row->meetingId] = [
@@ -100,16 +104,133 @@ class Ipswich_Events_Results_Data_Access
 			// with no result content — 'hasResults' tells the template
 			// whether to render a link or a plain "no results" label.
 			if (!empty($row->resultId)) {
+				$hasResults = !empty($row->resultLength);
+
 				$meetings[$row->meetingId]['results'][] = [
 					'id' => $row->resultId,
 					'name' => $row->resultName,
 					'type' => $row->resultType,
-					'hasResults' => !empty($row->resultLength)
+					'hasResults' => $hasResults,
+					'resultCount' => null
 				];
+
+				// Only CSV races have a meaningful "number of results";
+				// queue them up for a targeted follow-up fetch below.
+				if ($hasResults && strtoupper((string) $row->resultType) === 'CSV') {
+					$csvRaceIds[] = (int) $row->resultId;
+				}
 			}
 		}
 
+		if (!empty($csvRaceIds)) {
+			$counts = $this->get_csv_row_counts($csvRaceIds);
+			foreach ($meetings as &$meeting) {
+				foreach ($meeting['results'] as &$result) {
+					if (isset($counts[$result['id']])) {
+						$result['resultCount'] = $counts[$result['id']];
+
+						// Non-empty blob that parsed down to zero usable
+						// rows (header-only, or every row column-mismatched)
+						// is functionally "no data" — treat it the same way.
+						if ($result['resultCount'] === 0) {
+							$result['hasResults'] = false;
+						}
+					}
+				}
+				unset($result);
+			}
+			unset($meeting);
+		}
+
 		return array_values($meetings);
+	}
+
+	/**
+	 * Fetches and parses CSV blobs only for the given race ids — deliberately
+	 * a separate, targeted query rather than pulling every blob in the main
+	 * get_meetings() query, since PDF blobs in particular can be large and
+	 * don't need a "count" at all.
+	 */
+	private function get_csv_row_counts(array $race_ids)
+	{
+		$counts = [];
+		$idsToFetch = [];
+
+		// Serve from cache where we can — avoids re-fetching and
+		// re-parsing potentially large, unchanged blobs on every
+		// page view. 12 hours is a reasonable default since these
+		// are past results that rarely change once imported.
+		foreach ($race_ids as $race_id) {
+			$cached = get_transient('ije_csv_count_' . $race_id);
+			if ($cached !== false) {
+				$counts[$race_id] = (int) $cached;
+			} else {
+				$idsToFetch[] = $race_id;
+			}
+		}
+
+		if (empty($idsToFetch)) {
+			return $counts;
+		}
+
+		$rdb = $this->get_rdb();
+		$placeholders = implode(',', array_fill(0, count($idsToFetch), '%d'));
+		$sql = $rdb->prepare(
+			"SELECT id, results FROM `wp_ije_race_results` WHERE id IN ({$placeholders})",
+			$idsToFetch
+		);
+
+		$rows = $rdb->get_results($sql, OBJECT);
+
+		if ($rows) {
+			foreach ($rows as $row) {
+				$count = count($this->parse_csv_rows((string) $row->results));
+				$counts[(int) $row->id] = $count;
+				set_transient('ije_csv_count_' . (int) $row->id, $count, 12 * HOUR_IN_SECONDS);
+			}
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * Parses a CSV blob into an array of associative rows (header row as
+	 * keys). Shared by the REST controller (to build the /results response)
+	 * and get_csv_row_counts() above, so the count shown in the meetings
+	 * list is always guaranteed to match what /results actually returns.
+	 */
+	public function parse_csv_rows($csv)
+	{
+		$csv = preg_replace('/^\xEF\xBB\xBF/', '', (string) $csv);
+
+		$handle = fopen('php://memory', 'r+');
+		fwrite($handle, $csv);
+		rewind($handle);
+
+		$header = null;
+		$jsonArray = array();
+
+		while (($row = fgetcsv($handle)) !== false) {
+			// skip empty rows
+			if (count($row) === 1 && trim($row[0]) === '') {
+				continue;
+			}
+
+			if ($header === null) {
+				$header = $row;
+				continue;
+			}
+
+			if (count($row) !== count($header)) {
+				continue;
+			}
+
+			$jsonArray[] = array_combine($header, $row);
+		}
+
+		fclose($handle);
+
+		return $jsonArray;
 	}
 
 	public function get_events()

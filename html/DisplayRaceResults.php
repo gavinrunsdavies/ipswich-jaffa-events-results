@@ -9,17 +9,77 @@ $raceId = isset($_GET['raceId']) ? intval($_GET['raceId']) : 0;
 $title = isset($_GET['title']) ? $_GET['title'] : 'Race Results';
 $apiEndpoint = esc_url(home_url('/wp-json/ipswich-events-api/v1/events/' . $eventId . '/meetings/' . $meetingId . '/races/' . $raceId . '/results'));
 
-// Give the theme's own <title> a sensible value for this page, since
-// get_header() below renders the theme's normal document head.
-add_filter('pre_get_document_title', function () use ($title) {
-    return $title . ' — Ipswich JAFFA Running Club';
+// Fetch race/meeting/event metadata server-side so the page can show a real
+// title, date and event info, instead of relying only on the generic
+// ?title= query param.
+require_once plugin_dir_path(__FILE__) . '../api/v1/class-ipswich-events-results-data-access.php';
+
+$eventName = '';
+$eventInfo = '';
+$raceName = '';
+$meetingName = '';
+$meetingDate = '';
+$meetingVenue = '';
+
+if ($eventId && $meetingId && $raceId) {
+    $dataAccess = new \IpswichEventResultsAPI\V1\Ipswich_Events_Results_Data_Access();
+    $metaResponse = $dataAccess->get_race_results($raceId);
+
+    if (!empty($metaResponse) && isset($metaResponse[0])) {
+        $meta = $metaResponse[0];
+
+        // Only trust this row if it actually belongs to the meeting/event
+        // in the URL — same relationship check the REST controller does.
+        $belongsToMeeting = !isset($meta->meeting_id) || (int) $meta->meeting_id === $meetingId;
+        $belongsToEvent = !isset($meta->event_id) || (int) $meta->event_id === $eventId;
+
+        if ($belongsToMeeting && $belongsToEvent) {
+            $eventName = isset($meta->event_name) ? (string) $meta->event_name : '';
+            $eventInfo = isset($meta->event_info) ? (string) $meta->event_info : '';
+            $raceName = isset($meta->name) ? (string) $meta->name : '';
+            $meetingName = isset($meta->meeting_name) ? (string) $meta->meeting_name : '';
+            $meetingDate = isset($meta->date) ? (string) $meta->date : '';
+            $meetingVenue = isset($meta->venue) ? (string) $meta->venue : '';
+        }
+    }
+}
+
+// Prefer the real race name where we have it; fall back to the query string.
+$pageTitle = $raceName !== '' ? $raceName : $title;
+
+add_filter('pre_get_document_title', function () use ($pageTitle) {
+    return $pageTitle . ' — Ipswich JAFFA Running Club';
 });
 
 get_header();
 ?>
 
 <div class="ipswich-race-results-page" style="max-width:100%; padding:20px; box-sizing:border-box;">
-    <h1><?php echo esc_html($title); ?></h1>
+    <h1><?php echo esc_html($pageTitle); ?></h1>
+
+    <?php if ($eventName || $meetingName || $meetingDate || $meetingVenue || $eventInfo) : ?>
+        <div class="ipswich-race-meta" style="margin-bottom:20px; color:#444;">
+            <?php if ($eventName) : ?>
+                <p style="margin:0 0 4px; font-weight:600; font-size:16px;"><?php echo esc_html($eventName); ?></p>
+            <?php endif; ?>
+
+            <?php if ($meetingName || $meetingDate || $meetingVenue) : ?>
+                <?php
+                $formattedDate = '';
+                if ($meetingDate) {
+                    $timestamp = strtotime($meetingDate);
+                    $formattedDate = $timestamp ? date_i18n('j F Y', $timestamp) : $meetingDate;
+                }
+                $metaParts = array_filter([$meetingName, $formattedDate, $meetingVenue]);
+                ?>
+                <p style="margin:0 0 4px; color:#555;"><?php echo esc_html(implode(' — ', $metaParts)); ?></p>
+            <?php endif; ?>
+
+            <?php if ($eventInfo) : ?>
+                <p style="margin:8px 0 0; font-size:14px; color:#666;"><?php echo esc_html($eventInfo); ?></p>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
     <?php if (!$eventId || !$meetingId || !$raceId) : ?>
         <p>Missing event, meeting or race reference — this results page needs all three in the URL.</p>
@@ -90,6 +150,7 @@ get_header();
                             data: data,
                             columns: columns,
                             paging: true,
+                            pageLength: 50,
                             searching: true,
                             ordering: true,
                             responsive: true
