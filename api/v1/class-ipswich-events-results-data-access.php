@@ -45,11 +45,14 @@ class Ipswich_Events_Results_Data_Access
 	public function get_race_results($race_id)
 	{
 		$rdb = $this->get_rdb();
+		$race_table = 'wp_ije_race_results';
+		$meetings_table = 'wp_ije_meetings';
+		$events_table = 'wp_ije_events';
 		$sql = $rdb->prepare(
 			"SELECT r.id, r.results, r.name, r.meeting_id, m.event_id, m.name AS meeting_name, m.date, m.venue, r.type, e.name AS event_name, e.info AS event_info
-                                FROM `wp_ije_race_results` r
-                                INNER JOIN `wp_ije_meetings` m ON m.id = r.meeting_id
-                                LEFT JOIN `wp_ije_events` e ON e.id = m.event_id
+                                FROM `{$race_table}` r
+                                INNER JOIN `{$meetings_table}` m ON m.id = r.meeting_id
+                                LEFT JOIN `{$events_table}` e ON e.id = m.event_id
                                 WHERE r.id=%d",
 			$race_id
 		);
@@ -211,8 +214,18 @@ class Ipswich_Events_Results_Data_Access
 		$jsonArray = array();
 
 		while (($row = fgetcsv($handle)) !== false) {
-			// skip empty rows
-			if (count($row) === 1 && trim($row[0]) === '') {
+			// Skip rows that are entirely blank — either a single
+			// empty-string column (a genuinely blank CSV line) or a
+			// row with the correct column count where every field is
+			// empty/whitespace (e.g. a fully-blank data row: ",,,,,,,").
+			$isBlankRow = true;
+			foreach ($row as $cell) {
+				if (trim((string) $cell) !== '') {
+					$isBlankRow = false;
+					break;
+				}
+			}
+			if ($isBlankRow) {
 				continue;
 			}
 
