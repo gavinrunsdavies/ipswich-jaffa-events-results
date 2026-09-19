@@ -57,12 +57,8 @@ get_header();
 <div class="ipswich-race-results-page" style="max-width:100%; padding:20px; box-sizing:border-box;">
     <h1><?php echo esc_html($pageTitle); ?></h1>
 
-    <?php if ($eventName || $meetingName || $meetingDate || $meetingVenue || $eventInfo) : ?>
+    <?php if ($meetingName || $meetingDate || $meetingVenue || $eventInfo) : ?>
         <div class="ipswich-race-meta" style="margin-bottom:20px; color:#444;">
-            <?php if ($eventName) : ?>
-                <p style="margin:0 0 4px; font-weight:600; font-size:16px;"><?php echo esc_html($eventName); ?></p>
-            <?php endif; ?>
-
             <?php if ($meetingName || $meetingDate || $meetingVenue) : ?>
                 <?php
                 $formattedDate = '';
