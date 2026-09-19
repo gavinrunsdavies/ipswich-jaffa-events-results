@@ -1,0 +1,11 @@
+{
+  "name": "gavinrunsdavies/ipswich-jaffa-events-results",
+  "description": "Ipswich JAFFA events results WordPress plugin",
+  "type": "wordpress-plugin",
+  "autoload": {
+    "classmap": [
+      "api/"
+    ]
+  },
+  "require": {}
+}
