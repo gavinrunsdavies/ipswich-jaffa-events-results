@@ -21,6 +21,7 @@ $icon_pdf = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="
     #<?php echo esc_js($tableId); ?> td,
     #<?php echo esc_js($tableId); ?> th {
         vertical-align: middle;
+        font-size: 13px;
     }
     #<?php echo esc_js($tableId); ?> .ipswich-results-cell {
         display: flex;
