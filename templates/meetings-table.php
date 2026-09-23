@@ -69,7 +69,10 @@ $icon_pdf = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="
                         <?php foreach ($meetings as $meeting): ?>
                                 <tr>
                                         <td><?php echo esc_html($meeting['meetingName']); ?></td>
-                                        <td><?php echo esc_html($meeting['meetingDate']); ?></td>
+                                        <td data-order="<?php echo esc_attr($meeting['meetingDate']); ?>"><?php
+                                                $meetingTimestamp = strtotime($meeting['meetingDate']);
+                                                echo esc_html($meetingTimestamp ? date_i18n('j M Y', $meetingTimestamp) : $meeting['meetingDate']);
+                                        ?></td>
                                         <td><?php echo esc_html($meeting['meetingVenue']); ?></td>
                                         <td>
                                                 <div class="ipswich-results-cell">
