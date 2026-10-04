@@ -16,7 +16,7 @@ After installing or updating the plugin, visit **Settings → Permalinks** (or r
 
 ## Shortcodes
 
-- `[ipswich-jaffa-events-results event-id="<id>"]` — renders a table of meetings for the given event, with links to race results (PDF or HTML results page).
+- `[ipswich-jaffa-events-results event-id="<id>" rows="<count>"]` — renders a table of meetings for the given event, with links to race results (PDF or HTML results page). Use `rows="all"` (or `rows="-1"`) to show all meeting rows, or pass an integer like `rows="100"` to force a specific page length. Default is `100` rows per page.
 
 ## REST API
 Base path: `/wp-json/ipswich-events-api/v1`

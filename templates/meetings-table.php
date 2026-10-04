@@ -7,6 +7,7 @@ if (!defined('ABSPATH')) {
  * Expects the following variables to already be set by the includer:
  * @var array  $meetings     Rows from Ipswich_Events_Results_Data_Access::get_meetings()
  * @var int    $eventId
+ * @var int    $pageLength   DataTables page length (use -1 for all rows)
  * @var string $apiBase      untrailingslashit(home_url()) — for PDF links
  * @var string $resultsPage  Base URL (with ipswich_event_results/eventId/title already set) for CSV links
  * @var string $tableId      Unique id for this table instance
@@ -113,6 +114,7 @@ $icon_pdf = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="
 <script>
 jQuery(function ($) {
         $('#<?php echo esc_js($tableId); ?>').DataTable({
+                pageLength: <?php echo (int) $pageLength; ?>,
                 order: [[1, 'desc']],
                 columnDefs: [
                         { targets: 3, orderable: false }

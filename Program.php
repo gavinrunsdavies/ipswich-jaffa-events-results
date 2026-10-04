@@ -59,21 +59,42 @@ class Program
 	{
 		$atts = shortcode_atts(
 			array(
-				'event-id' => 0
+				'event-id' => 0,
+				'rows' => 100
 			),
 			$attr
 		);
 
 		$eventId = intval($atts['event-id']);
+		$rows = $this->normalise_rows_param($atts['rows']);
 
 		if ($eventId <= 0) {
 			return '<p>Please provide an event-id when using the shortcode.</p>';
 		}
 
-		return $this->render_event_meetings($eventId);
+		return $this->render_event_meetings($eventId, $rows);
 	}
 
-	private function render_event_meetings($eventId)
+	private function normalise_rows_param($value)
+	{
+		if (is_array($value)) {
+			return 100;
+		}
+
+		$trimmed = strtolower(trim((string) $value));
+		if ($trimmed === 'all' || $trimmed === '-1') {
+			return -1;
+		}
+
+		if (is_numeric($trimmed)) {
+			$rows = (int) $trimmed;
+			return $rows > 0 ? $rows : 100;
+		}
+
+		return 100;
+	}
+
+	private function render_event_meetings($eventId, $rows = 100)
 	{
 		require_once plugin_dir_path(__FILE__) . 'api/v1/class-ipswich-events-results-data-access.php';
 
@@ -94,6 +115,7 @@ class Program
 		// each table needs a unique id for DataTables to target it alone.
 		self::$instanceCount++;
 		$tableId = 'ipswich-meetings-table-' . $eventId . '-' . self::$instanceCount;
+		$pageLength = (int) $rows;
 
 		wp_enqueue_style('ipswich-datatables-css');
 		wp_enqueue_script('ipswich-datatables-js');
