@@ -1,17 +1,24 @@
 <?php
 /**
- * The base configurations of the WordPress.
+ * Database configuration for the IPSWICH JAFFA event results plugin.
  *
- * @package WordPress
+ * In production/test deployments, values should come from GitHub environment
+ * secrets and be injected during the deployment step. Local development can
+ * fallback to placeholder values.
  */
 
-// ** MySQL settings - You can get this info from your web host ** //
+if (!defined('EVENTS_RESULTS_DB_NAME')) {
+    define('EVENTS_RESULTS_DB_NAME', getenv('EVENTS_RESULTS_DB_NAME') ?: '***');
+}
 
-/** The name of the database for WordPress */
-define('EVENTS_RESULTS_DB_NAME', '***');
+if (!defined('EVENTS_RESULTS_DB_USER')) {
+    define('EVENTS_RESULTS_DB_USER', getenv('EVENTS_RESULTS_DB_USER') ?: '***');
+}
 
-/** MySQL database username */
-define('EVENTS_RESULTS_DB_USER', '***');
+if (!defined('EVENTS_RESULTS_DB_PASSWORD')) {
+    define('EVENTS_RESULTS_DB_PASSWORD', getenv('EVENTS_RESULTS_DB_PASSWORD') ?: '***');
+}
 
-/** MySQL database password */
-define('EVENTS_RESULTS_DB_PASSWORD', '***');
+if (!defined('EVENTS_RESULTS_DB_HOST')) {
+    define('EVENTS_RESULTS_DB_HOST', getenv('EVENTS_RESULTS_DB_HOST') ?: (defined('DB_HOST') ? DB_HOST : 'localhost'));
+}
