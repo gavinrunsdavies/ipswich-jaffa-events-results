@@ -43,6 +43,22 @@ jobs:
           echo "  define('EVENTS_RESULTS_DB_PASSWORD', '${EVENTS_RESULTS_DB_PASSWORD}');" >> api/config.php
           echo "}" >> api/config.php
 
+      - name: 🗂️ Ensure the FTP target directory exists
+        shell: bash
+        env:
+          FTP_USERNAME: github-ipswich-jaffa-events-results@test.ipswichjaffa.org.uk
+          FTP_PASSWORD: ${{ secrets.FtpServerPassword }}
+          FTP_SERVER: ftp.ipswichjaffa.org.uk
+          FTP_TARGET_DIR: public_html/wp-content/plugins/ipswich-jaffa-events-results
+        run: |
+          mkdir -p /tmp/ftp-deploy-check
+          printf '%s' 'ready' > /tmp/ftp-deploy-check/.deploy-check
+          curl --fail --silent --show-error \
+            --user "${FTP_USERNAME}:${FTP_PASSWORD}" \
+            --ftp-create-dirs \
+            --upload-file /tmp/ftp-deploy-check/.deploy-check \
+            "ftp://${FTP_SERVER}/${FTP_TARGET_DIR}/.deploy-check"
+
       # Deploy files to test site via FTP
       - name: 📂 Sync files to test
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
@@ -50,7 +66,7 @@ jobs:
           server: ftp.ipswichjaffa.org.uk
           username: github-ipswich-jaffa-events-results@test.ipswichjaffa.org.uk
           password: ${{ secrets.FtpServerPassword }}
-          server-dir: public_html/wp-content/plugins/ipswich-jaffa-events-results/
+          server-dir: ./public_html/wp-content/plugins/ipswich-jaffa-events-results/
           dry-run: false
           exclude: |
             **/.git*
