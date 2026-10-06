@@ -54,6 +54,10 @@ jobs:
           mkdir -p /tmp/ftp-deploy-check
           printf '%s' 'ready' > /tmp/ftp-deploy-check/.deploy-check
           curl --fail --silent --show-error \
+            --connect-timeout 15 \
+            --max-time 60 \
+            --disable-epsv \
+            --ftp-pasv \
             --user "${FTP_USERNAME}:${FTP_PASSWORD}" \
             --ftp-create-dirs \
             --upload-file /tmp/ftp-deploy-check/.deploy-check \
