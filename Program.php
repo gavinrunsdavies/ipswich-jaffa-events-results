@@ -51,6 +51,11 @@ class Program
 		wp_register_style('ipswich-datatables-responsive-css', 'https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css', array('ipswich-datatables-css'), '2.5.0');
 		wp_register_script('ipswich-datatables-responsive-js', 'https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js', array('ipswich-datatables-js'), '2.5.0', true);
 
+		// Buttons and column visibility controls for the CSV race results page.
+		wp_register_style('ipswich-datatables-buttons-css', 'https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css', array('ipswich-datatables-css'), '2.4.2');
+		wp_register_script('ipswich-datatables-buttons-js', 'https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js', array('ipswich-datatables-js'), '2.4.2', true);
+		wp_register_script('ipswich-datatables-buttons-colvis-js', 'https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js', array('ipswich-datatables-buttons-js'), '2.4.2', true);
+
 		// Registered only, not enqueued — enqueued in render_event_meetings()
 		// so pages without the shortcode don't load DataTables for nothing.
 	}

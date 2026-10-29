@@ -149,7 +149,9 @@ get_header();
                             pageLength: 50,
                             searching: true,
                             ordering: true,
-                            responsive: true
+                            responsive: true,
+                            dom: 'Bfrtip',
+                            buttons: ['colvis']
                         });
                     })
                     .catch((error) => {
