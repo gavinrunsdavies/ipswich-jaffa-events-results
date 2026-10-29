@@ -85,6 +85,9 @@ add_action('template_redirect', function () {
             wp_enqueue_script('ipswich-datatables-js');
             wp_enqueue_style('ipswich-datatables-responsive-css');
             wp_enqueue_script('ipswich-datatables-responsive-js');
+            wp_enqueue_style('ipswich-datatables-buttons-css');
+            wp_enqueue_script('ipswich-datatables-buttons-js');
+            wp_enqueue_script('ipswich-datatables-buttons-colvis-js');
         }
 
         // Ensure WP context is present and include the template which will use WP enqueued assets
